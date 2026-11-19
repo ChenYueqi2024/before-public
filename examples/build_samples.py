@@ -1,6 +1,8 @@
 """Generate a tiny synthetic site, fictional metadata, and a redacted sample report."""
 import sys
 import zipfile
+import base64
+import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -24,6 +26,15 @@ def main():
     docs=ROOT/'docs';write_report(report,docs)
     (docs/'report.html').replace(docs/'demo-report.html')
     (docs/'report.json').replace(docs/'demo-report.json')
+    samples=[{'name':str(file.relative_to(site)).replace('\\','/'),'base64':base64.b64encode(file.read_bytes()).decode('ascii')} for file in [site/'index.html',site/'assets/old-photo.jpg']]
+    terms=[term['value'] for term in json.loads(config.read_text(encoding='utf-8'))['terms']]
+    (docs/'samples.js').write_text('export const sampleTerms='+json.dumps(terms)+';\nexport const samples='+json.dumps(samples)+';\n',encoding='utf-8')
+    fixtures=ROOT/'tests/fixtures';fixtures.mkdir(exist_ok=True)
+    for extension in ['jpg','png','webp']:
+        image.save(fixtures/f'gps.{extension}',exif=exif)
+        image.save(fixtures/f'clean.{extension}')
+    partial=Image.Exif();partial[34853]={0:bytes([2,3,0,0])}
+    image.save(fixtures/'partial-gps.jpg',exif=partial)
     with zipfile.ZipFile(docs/'sample-site.zip','w',zipfile.ZIP_DEFLATED) as archive:
         archive.write(config,'privacy.example.json')
         for file in site.rglob('*'):

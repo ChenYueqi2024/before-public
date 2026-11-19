@@ -2,9 +2,24 @@
 
 给准备公开的个人网站，再做一次本地检查：配置词是否还在页面、元信息或文件名里？图片是否带着 EXIF GPS？删掉的文件是否仍在 Git 历史中？
 
-[查看合成示例](https://chenyueqi2024.github.io/before-public/) · [示例报告](https://chenyueqi2024.github.io/before-public/demo-report.html)
+[打开浏览器检查](https://chenyueqi2024.github.io/before-public/) · [本地工具示例报告](https://chenyueqi2024.github.io/before-public/demo-report.html)
 
-这是 v0.1 基础版。**只检查和报告，不修改文件、不重写历史、不上传数据。** 未命中不等于没有隐私信息。
+浏览器版 v0.2；原有 Python v0.1 本地工具继续保留。**只检查和报告，不修改文件、不重写历史、不上传数据。** 未命中不等于没有隐私信息。
+
+## 浏览器检查
+
+1. 打开网页，多选准备公开的文件；或点击「先用合成样例试试」。
+2. 每行填写一个敏感词，点击「开始检查」。精确匹配、区分大小写，重复词合并。留空时只检查 GPS，文本列为未检查。
+3. 查看命中位置与未完整检查项，按需保存 JSON 或独立 HTML 报告。修改文件或规则后，旧报告立即失效；可取消检查或清空本次材料。
+
+文件和规则仅在当前浏览器内处理，不上传、不写网站存储，无 API、统计脚本或外部 CDN。页面与解析库首次加载需要网络；加载完成后可断网检查和导出。CSP 禁止网络连接，EXIF 解析库随站点提供，来源与许可见 [vendor](docs/vendor/README.md)。
+
+- 敏感词：所选文件名、常见纯文本格式（UTF-8、带 BOM 的 UTF-16），支持 HTML 实体；报告只写规则编号、文件和行号，不写匹配原文。浏览器文件选择不提供完整原始路径。
+- 图像：JPEG、PNG、WebP 的 EXIF GPS 目录，包括部分 GPS 字段；不显示坐标。不验证像素解码，不检查 XMP、IPTC、画面内容或其他 EXIF 隐私字段。
+- PDF、Office、压缩包、其他图像格式、损坏元数据和不支持的编码会列入未检查项，不能当作检查通过。
+- 限制：300 个文件、总计 128 MiB、单文件 16 MiB；50 个敏感词，每词 200 字符；最多 5000 条命中，后续未检查范围写入报告。
+- 报告会遮盖路径中的匹配词，但仍可能保留其他个人信息，分享前请人工核对。不会自动识别所有姓名、电话或密钥。
+- **浏览器版不读 Git 历史、暂存区，也不实现 `forbidden_paths` 规则。** 以下本地工具继续支持这些功能。浏览器合成样例为 3 处命中；本地示例另有禁止路径规则，共 4 处。
 
 ## 安装与运行
 
@@ -71,9 +86,12 @@ before-public /path/to/repo --mode history --config /private/rules.json --output
 
 ```sh
 python -m unittest discover -s tests -v
+node --test tests/*.test.mjs
 python examples/build_samples.py
 ```
 
 测试使用临时 Git 仓库验证暂存内容、删除后历史、其他分支、特殊文件名、HTML 转义与报告遮盖；图像 GPS 与网站均为合成样例。Linux CI 另覆盖 Windows 无权限时无法创建的符号链接。
+
+浏览器核心测试覆盖三种图像格式的有/无 GPS、部分 GPS 字段、损坏元数据、文本编码、实体、遮盖、超限与取消。`examples/build_samples.py` 可重建合成图片与内置演示；浏览器端没有构建或 npm 安装步骤。用静态 HTTP 服务打开 `docs/`，请勿直接用 `file://` 加载 ES 模块。
 
 MIT License · Yueqi
