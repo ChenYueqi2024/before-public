@@ -6,3 +6,4 @@ dist/
 .venv/
 before-public-report/
 privacy.local.json
+node_modules/

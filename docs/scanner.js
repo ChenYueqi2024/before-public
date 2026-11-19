@@ -23,9 +23,9 @@ export function numericEntities(text) {
   return text.replace(/&#(x[0-9a-f]+|[0-9]+);?/gi,(_,digits)=>{const n=digits[0].toLowerCase()==='x'?parseInt(digits.slice(1),16):parseInt(digits,10);return n>0&&n<=0x10ffff&&!(n>=0xd800&&n<=0xdfff)?String.fromCodePoint(n):'\uFFFD';});
 }
 
-export async function scanFiles(entries,terms,{signal,decodeEntities=numericEntities,progress=()=>{}}={}) {
-  const report={schema_version:1,mode:'browser-files',counts:{entries:entries.length,text:0,image:0,commits:0},findings:[],skipped:[],
-    coverage:{terms:terms.length,scope:'仅所选文件；不包含 Git 历史或暂存区',images:'JPEG / PNG / WebP 的 EXIF GPS 目录；不验证像素解码、XMP、IPTC 或画面内容'}};
+export async function scanFiles(entries,terms,{signal,decodeEntities=numericEntities,progress=()=>{},readDocument}={}) {
+  const report={schema_version:2,mode:'browser-files',counts:{entries:entries.length,text:0,image:0,document:0,partial_document:0,commits:0},findings:[],skipped:[],
+    coverage:{terms:terms.length,scope:'仅所选文件；不包含 Git 历史或暂存区',images:'JPEG / PNG / WebP 的 EXIF GPS 目录；不验证像素解码、XMP、IPTC 或画面内容',documents:'Word / PDF 可提取文字；不做 OCR，不检查内嵌图片 GPS、宏或所有隐藏对象；DOC 不检查文件属性及已删除修订'}};
   const masked=path=>redact(decodeEntities(redact(path,terms)),terms);
   const skip=(path,reason)=>report.skipped.push({path:masked(path),reason});
   const abort=()=>{if(signal?.aborted)throw new DOMException('Cancelled','AbortError');};
@@ -34,7 +34,17 @@ export async function scanFiles(entries,terms,{signal,decodeEntities=numericEnti
     if(report.findings.length>=LIMITS.findings){for(const entry of entries.slice(index))skip(entry.path,'达到报告命中上限，文件未检查。');break;}
     abort();const {file,path}=entries[index],name=file.name||path.split('/').at(-1);
     let omitted=false;
-    const add=(rule,location,line=null)=>{if(report.findings.length<LIMITS.findings)report.findings.push({path:masked(path),rule,location,line});else omitted=true;};
+    const add=(rule,location,line=null)=>{if(report.findings.length<LIMITS.findings)report.findings.push({path:masked(path),rule,location:masked(location),line});else omitted=true;};
+    async function match(text,location){
+      const lines=text.split(/\r\n|\n|\r/);
+      for(let number=0;number<lines.length;number++){
+        const line=lines[number],expanded=decodeEntities(line);
+        for(let i=0;i<terms.length;i++)if(line.includes(terms[i])||expanded.includes(terms[i]))add('敏感词 '+(i+1),location,number+1);
+        if(report.findings.length>=LIMITS.findings){skip(path,'达到 5000 条命中上限，剩余内容未检查。');return false;}
+        if(number%2000===0){await new Promise(resolve=>setTimeout(resolve,0));abort();}
+      }
+      return true;
+    }
     for(let i=0;i<terms.length;i++)if(path.includes(terms[i])||decodeEntities(path).includes(terms[i]))add('敏感词 '+(i+1),'文件名 / 路径');
     if(file.size>LIMITS.file){skip(path,'超过单文件 16 MiB 限制，内容未检查。');continue;}
     let bytes;
@@ -46,7 +56,22 @@ export async function scanFiles(entries,terms,{signal,decodeEntities=numericEnti
     }else {
       const extension=name.includes('.')?name.split('.').at(-1).toLowerCase():'';
       const magic=String.fromCharCode(...bytes.slice(0,5));
-      if(!textExtensions.has(extension)||magic.startsWith('%PDF')||magic.startsWith('PK\x03\x04'))skip(path,'不支持的格式；未解析 PDF、Office、压缩包或其他二进制内容。');
+      if(['doc','docx','pdf'].includes(extension)||magic.startsWith('%PDF')){
+        if(!terms.length)skip(path,'未填写敏感词，文档正文没有检查。请填写要查找的姓名、邮箱等内容后重试。');
+        else if(!readDocument)skip(path,'文档解析器不可用；正文没有检查，请刷新页面后重试。');
+        else {
+          let extracted;
+          try{extracted=await readDocument(bytes,magic.startsWith('%PDF')?'pdf':extension,signal);}
+          catch(error){if(error.name==='AbortError')throw error;skip(path,error.message);}
+          if(extracted){
+            for(const warning of extracted.warnings)skip(path,warning);
+            let complete=!extracted.warnings.length;
+            for(const unit of extracted.units)if(!await match(unit.text,unit.location)){complete=false;break;}
+            if(complete)report.counts.document++;else if(extracted.units.length)report.counts.partial_document++;
+          }
+        }
+      }
+      else if(!textExtensions.has(extension)||magic.startsWith('PK\x03\x04'))skip(path,'暂不支持此文件格式，内容没有检查。请导出为 TXT、DOCX 或 PDF 后重试；压缩包需先解压。');
       else if(!terms.length)skip(path,'未配置敏感词，本文件未进行文本匹配。');
       else {
         let text;
@@ -56,14 +81,7 @@ export async function scanFiles(entries,terms,{signal,decodeEntities=numericEnti
           if(/[\x00-\x08\x0e-\x1f]/.test(text))throw new Error('Binary data');
         }catch {skip(path,'不支持的文本编码或二进制内容；文本未检查。');text=null;}
         if(text!==null){
-          const lines=text.split(/\r\n|\n|\r/);let complete=true;
-          for(let number=0;number<lines.length;number++){
-            const line=lines[number],expanded=decodeEntities(line);
-            for(let i=0;i<terms.length;i++)if(line.includes(terms[i])||expanded.includes(terms[i]))add('敏感词 '+(i+1),'文本',number+1);
-            if(report.findings.length>=LIMITS.findings){skip(path,'达到 5000 条命中上限，该文件剩余文本未检查。');complete=false;break;}
-            if(number%2000===0){await new Promise(resolve=>setTimeout(resolve,0));abort();}
-          }
-          if(complete)report.counts.text++;
+          if(await match(text,'文本'))report.counts.text++;
         }
       }
     }

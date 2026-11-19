@@ -1,0 +1,4 @@
+{
+  "terms": [{"label": "Replace with your own local rule", "value": "REPLACE_THIS_WITH_A_PRIVATE_TERM"}],
+  "forbidden_paths": [".env", "assets/private-photo.jpg"]
+}

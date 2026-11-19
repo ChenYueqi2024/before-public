@@ -1,0 +1,2 @@
+docs/vendor/documents/* -text -whitespace
+tests/fixtures/documents/* binary
