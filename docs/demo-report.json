@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "mode": "directory",
+  "findings": [
+    {
+      "rule": "Private name",
+      "location": "text",
+      "line": 2,
+      "path": "index.html",
+      "commit": null
+    },
+    {
+      "rule": "Private email",
+      "location": "text",
+      "line": 4,
+      "path": "index.html",
+      "commit": null
+    },
+    {
+      "path": "assets/old-photo.jpg",
+      "rule": "Forbidden path",
+      "location": "path",
+      "line": null,
+      "commit": null
+    },
+    {
+      "rule": "EXIF GPS",
+      "location": "image metadata",
+      "line": null,
+      "path": "assets/old-photo.jpg",
+      "commit": null
+    }
+  ],
+  "skipped": [],
+  "counts": {
+    "entries": 2,
+    "text": 1,
+    "image": 1,
+    "commits": 0
+  },
+  "excluded_directories": []
+}

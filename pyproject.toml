@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "before-public"
+version = "0.1.0"
+description = "Local pre-publication checks for configured private terms, Git snapshots, and EXIF GPS"
+requires-python = ">=3.10"
+dependencies = ["Pillow>=10"]
+license = {text = "MIT"}
+authors = [{name = "Yueqi"}]
+
+[project.scripts]
+before-public = "before_public.__main__:main"
+
+[tool.setuptools]
+packages = ["before_public"]

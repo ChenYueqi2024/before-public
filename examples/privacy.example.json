@@ -1,0 +1,7 @@
+{
+  "terms": [
+    {"label": "Private name", "value": "Sample Private Person"},
+    {"label": "Private email", "value": "private@example.invalid"}
+  ],
+  "forbidden_paths": ["assets/old-photo.jpg"]
+}
