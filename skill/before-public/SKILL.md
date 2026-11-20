@@ -1,6 +1,6 @@
 ---
 name: before-public
-description: 在公开代码或向 GitHub push 前，本地检查配置的个人敏感词、常见凭据、图片 GPS、Word/PDF 文字、Git 暂存快照和历史。适用于发布前隐私检查；不自动推送、删除文件或改写历史。
+description: 在公开代码或向 GitHub push 前，本地检查配置的个人敏感词、常见凭据、图片 GPS、Word/PDF 文字与中英文 OCR、Git 暂存快照和历史。适用于发布前隐私检查；不自动推送、删除文件或改写历史。
 ---
 
 使用随 skill 提供的 `scripts/check.py`。这是只读检查，不是 Git hook；安装后不会拦截用户在终端执行的每次 push。用户可输入 `$before-public`，或要求“push 前检查隐私”。
@@ -9,7 +9,7 @@ description: 在公开代码或向 GitHub push 前，本地检查配置的个人
 
 1. 确定用户要发布的仓库根目录；读取已有的任务授权。不要把本 skill 目录当作待检查仓库。默认检查整个暂存快照和本地所有 refs 可达历史：工作区文件干净不代表暂存区、历史干净，push 也不只包含当前文件。
 2. 使用用户指定的外部规则 JSON；否则查找 `~/.config/before-public/rules.json`。首次缺少规则时，只询问规则文件路径，或用 `scripts/rules.example.json` 在仓库外创建可编辑模板，请用户在本地填写。不要要求用户把私密词或凭据发到聊天中。禁止把样例词当成用户的真实规则；不要猜测私人身份。
-3. 在 skill 自己的 `.venv` 中使用 Python 3.10+。首次使用可创建该虚拟环境并安装 `Pillow`、`pypdf`，不要修改系统 Python。旧版 DOC 还需要本机 Node.js 22+。缺少依赖会报告未完成，不可算作通过。
+3. 在 skill 自己的 `.venv` 中使用 Python 3.10+。首次使用可创建该虚拟环境并安装 `Pillow`、`pypdf`、`pypdfium2`，不要修改系统 Python。DOC 和 OCR 需要本机 Node.js 22+。在 skill 目录运行 `npm ci --ignore-scripts --prefix scripts/runtime/ocr-node` 安装锁定 OCR 依赖。模型已随 skill 打包；首次安装依赖可联网，扫描时全部使用本地文件。缺少依赖会报告未完成，不可算作通过。
 4. 运行（替换脚本、仓库和规则路径）：
 
    ```sh
@@ -17,7 +17,7 @@ description: 在公开代码或向 GitHub push 前，本地检查配置的个人
    ```
 
    默认报告保存在系统临时目录中，不进入仓库。可用 `--output /private/report-dir` 指定仓库外目录。`--mode staged` 或 `--mode history` 仅用于用户明确缩小范围时；不能把只检查 staged 描述成检查了待 push 历史。
-5. 只读取生成的遮盖报告与汇总，不在对话中显示配置值、源文件内容、GPS 坐标、凭据或原始 Git 输出。文档文字只通过本机子进程管道传递。不要上传到模型 API、第三方网站或云文档工具。
+5. 只读取生成的遮盖报告与汇总，不在对话中显示配置值、源文件内容、GPS 坐标、凭据或原始 Git 输出。文档和 OCR 原文只通过本机子进程管道传递；禁止直接执行 OCR 脚本并把原文输出到对话。不要上传到模型 API、第三方网站或云文档工具。
 
 ## 解释与后续动作
 
@@ -26,4 +26,4 @@ description: 在公开代码或向 GitHub push 前，本地检查配置的个人
 - 命中或未完成时，指出具体阻碍并继续用户已授权的修复；不要自行把风险当作可忽略并 push。已知误报可由用户明确接受，不要求重复确认已有授权。
 - 只有用户已经授权发布、且检查问题已处理或明确接受时，才继续原任务中的 push。skill 本身不授予发布权限，不修改 Git hooks，不 fetch、不 commit、不改写历史。
 - 文件或 Git 状态改变后，在 push 前重新检查。远端未拉取分支、reflog、不可达对象、LFS 远端内容、子模块、托管平台缓存与他人副本不在范围内。
-- Word/PDF 只检查可提取文字；不 OCR，不检查文档内图片 GPS、宏和所有隐藏对象。DOC 不检查文档属性及已删除修订。扫描页、加密、损坏、缺少依赖和超限应保留为未完成。完整浏览器体验：[公开之前](https://chenyueqi2024.github.io/before-public/)。
+- Word 检查可提取文字；PDF 检查文字层与前 20 页整页 OCR，图片支持 JPEG / PNG / WebP 的中英文 OCR。自动规则筛查姓名字段、身份证格式、中国大陆手机号、API key / PAT、私钥等候选；不验证真实性或有效性，未知姓名不是通用实体识别。特定姓名仍需配置词。OCR 最长边 2400 像素、图片 1200 万像素、单次 90 秒；无文字、低置信度、缩放、加密、损坏、缺依赖或超限都保留为未完成，不能忽略。置信度不是准确率。Word 内图片、文档内图片 GPS、宏和所有隐藏对象不检查；DOC 不检查属性和已删除修订。完整浏览器体验：[公开之前](https://chenyueqi2024.github.io/before-public/)。

@@ -9,7 +9,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 
-def extract(data, suffix):
+def extract(data, suffix, with_ocr=False):
     units, warnings = [], []
     def add(text, location):
         if text and text.strip():
@@ -53,7 +53,7 @@ def extract(data, suffix):
                 raise ValueError('PDF exceeds 100 pages; split the document.')
             for number,page in enumerate(pdf.pages,1):
                 text=page.extract_text() or ''
-                if not text.strip():warnings.append(f'PDF page {number} has no extractable text; check manually or OCR first.')
+                if not text.strip() and not with_ocr:warnings.append(f'PDF page {number} has no extractable text; check manually or OCR first.')
                 add(text,f'PDF page {number}')
                 for reference in page.get('/Annots',[]):
                     annotation=reference.get_object()

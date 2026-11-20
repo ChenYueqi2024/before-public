@@ -21,3 +21,7 @@ Only byte arrays are passed to the parser. No URL input, remote runtime imports,
 - saxes and Browserify runtime dependencies are included with their original licenses in `documents/LICENSES.txt`.
 
 Only byte arrays enter document parsers. PDF external font/CMap requests use an in-memory data factory; embedded scripts, hyperlinks and external resources are not executed or opened. Runtime code and supporting bytes load with the page, without CDN/API requests during checks. `documents/SHA256.json` records generated file hashes.
+
+## OCR (v0.4)
+
+`npm run build:ocr` packages Tesseract.js 6.0.1, Tesseract.js-core 6.1.2 (Apache-2.0), English and simplified Chinese `4.0.0_best_int` data from @tesseract.js-data 1.0.0. Source: https://github.com/naptha/tesseract.js and https://github.com/naptha/tessdata. Local worker, embedded WASM (SIMD and fallback), model bytes, licenses and SHA256 hashes are in `ocr/`. Input images are bytes, never URLs. Models load from this site before readiness; image/PDF checks need no network or external OCR API. Cache of user material and Tesseract model IndexedDB caching are disabled.

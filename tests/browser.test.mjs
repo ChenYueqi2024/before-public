@@ -12,12 +12,13 @@ for(const extension of ['jpg','png','webp']){
     assert.equal(await inspectGPS(await fixture('gps.'+extension)),true);
     assert.equal(await inspectGPS(await fixture('clean.'+extension)),false);
     const result=await scanFiles([entry('gps.'+extension,await fixture('gps.'+extension)),entry('clean.'+extension,await fixture('clean.'+extension))],[]);
-    assert.equal(result.counts.image,2);assert.equal(result.findings.length,1);assert.equal(result.skipped.length,0);
+    assert.equal(result.counts.image,2);assert.equal(result.findings.length,1);assert.equal(result.skipped.length,2);
+    assert.ok(result.skipped.every(item=>item.reason.includes('OCR 引擎不可用')));
     assert.equal(result.findings[0].rule,'EXIF GPS');assert.doesNotMatch(JSON.stringify(result),/latitude|longitude|GPSLatitude/i);
   });
   test(`${extension}: truncated containers are incomplete`,async()=>{
     const bytes=await fixture('gps.'+extension),result=await scanFiles([entry('broken.'+extension,bytes.subarray(0,bytes.length-10))],[]);
-    assert.equal(result.counts.image,0);assert.equal(result.skipped.length,1);
+    assert.equal(result.counts.image,0);assert.equal(result.skipped.length,2);
   });
 }
 test('partial GPS metadata is detected even without coordinates',async()=>assert.equal(await inspectGPS(await fixture('partial-gps.jpg')),true));
@@ -27,11 +28,11 @@ test('invalid GPS pointer is incomplete, never clean',async()=>{
   const root=view.getUint32(4,little),count=view.getUint16(root,little);
   let changed=false;for(let i=0;i<count;i++){const offset=root+2+i*12;if(view.getUint16(offset,little)===34853){view.setUint32(offset+8,0xfffffff0,little);changed=true;}}
   assert.equal(changed,true);const result=await scanFiles([entry('broken.jpg',bytes)],[]);
-  assert.equal(result.skipped.length,1);assert.equal(result.counts.image,0);
+  assert.equal(result.skipped.length,2);assert.equal(result.counts.image,0);
 });
 test('image extensions and bare headers cannot produce a clean result',async()=>{
   const result=await scanFiles([entry('bad.jpg',Buffer.from([255,216,255,217])),entry('bad.png','text'),entry('image.heic','unknown'),entry('image.tiff','unknown')],[]);
-  assert.equal(result.skipped.length,4);assert.equal(result.counts.image,0);assert.equal(imageKind(new Uint8Array()),null);
+  assert.equal(result.skipped.length,5);assert.equal(result.counts.image,0);assert.equal(imageKind(new Uint8Array()),null);
 });
 test('literal terms, entities, line numbers and filename redaction',async()=>{
   const terms=parseTerms('Private Person\na+b\nPrivate Person\n\n');
@@ -50,8 +51,8 @@ test('binary, PDF, Office and archives are not silently counted as text',async()
   const result=await scanFiles([entry('doc.pdf','%PDF'),entry('fake.txt','%PDF-sample'),entry('binary.txt',Buffer.from([0,1])),entry('slides.pptx','PK\x03\x04'),entry('fake.md','PK\x03\x04')],['private']);
   assert.equal(result.skipped.length,5);assert.equal(result.counts.text,0);
 });
-test('missing terms leave text incomplete; matching file names still reported for unsupported files',async()=>{
-  assert.equal((await scanFiles([entry('page.txt','private')],[])).skipped.length,1);
+test('automatic checks work without custom terms; matching filenames still reported for unsupported files',async()=>{
+  assert.equal((await scanFiles([entry('page.txt','private')],[])).skipped.length,0);
   const result=await scanFiles([entry('private.pdf','%PDF')],['private']);
   assert.equal(result.findings.length,1);assert.equal(result.skipped.length,1);assert.doesNotMatch(JSON.stringify(result),/private/);
 });

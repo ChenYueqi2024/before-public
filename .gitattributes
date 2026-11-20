@@ -1,2 +1,5 @@
 docs/vendor/documents/* -text -whitespace
 tests/fixtures/documents/* binary
+
+docs/vendor/ocr/** -text -whitespace
+tests/fixtures/ocr/* binary

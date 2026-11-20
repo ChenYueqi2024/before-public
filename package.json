@@ -1,17 +1,22 @@
 {
   "name": "before-public-browser",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build:documents": "node scripts/build-document-vendor.cjs"
+    "build:documents": "node scripts/build-document-vendor.cjs",
+    "build:ocr": "node scripts/build-ocr-vendor.cjs"
   },
   "devDependencies": {
+    "@tesseract.js-data/chi_sim": "1.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
     "browserify": "17.0.1",
     "cfb": "1.2.2",
     "fflate": "0.8.3",
     "pdfjs-dist": "6.5.438",
+    "tesseract.js": "6.0.1",
+    "tesseract.js-core": "6.1.2",
     "word-extractor": "1.0.4"
   }
 }

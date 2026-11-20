@@ -40,7 +40,7 @@ $('sample').addEventListener('click',()=>{
 function download(format){if(!report)return;const blob=new Blob([format==='json'?JSON.stringify(report,null,2):reportHTML(report)],{type:format==='json'?'application/json':'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='before-public-report.'+format;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 $('json').addEventListener('click',()=>download('json'));$('html').addEventListener('click',()=>download('html'));
 try{
-  await prepareDocuments();
+  await prepareDocuments(message=>{$('status').textContent=message;});
   for(const id of ['files','terms','sample','clear'])$(id).disabled=false;
-  $('status').textContent='已就绪。Word / PDF 解析器已加载，可断网检查。';
+  $('status').textContent='已就绪。中英文 OCR 模型已加载，可断网检查。';
 }catch(error){$('status').textContent=error.message;notify('检查器加载失败',error.message);}

@@ -1,0 +1,9 @@
+{
+  "LICENSES.txt": "9c88a93ba9083986d471c96fa9537ff3a2a02db69439be104a0fbbc66cbdf55b",
+  "tesseract-core-lstm.wasm.js": "775a35df6f2ae100e02609443e6bd5cafcd07983dd6175454ca4a432a7730687",
+  "tesseract-core-simd-lstm.wasm.js": "9d7c43fb206dc9f48475228b46bf35f888fa9e6259da2e67d5a75c77049f2dc7",
+  "tesseract.js": "78055bb0e417cfd73b6833d61e253c8b933a5cb65432c9b03244ba22c31ec21b",
+  "worker.min.js": "38645599043239c0eb6db08a6504a92dcdc292200535f3e9339cd77c4443b842",
+  "lang/chi_sim.traineddata.gz": "b8a23f10c7de500891eb458a8adc9cc58ab7f242f08b7d149f5e9aea4ad5db7c",
+  "lang/eng.traineddata.gz": "45b4cb346724ac1774f1c36f42f182b887bcdb28ebe63e6fff90ac41f3fcff91"
+}

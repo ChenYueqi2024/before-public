@@ -13,29 +13,39 @@ sys.path.insert(0,str(HERE/'runtime' if (HERE/'runtime/before_public').is_dir() 
 from before_public import scanner
 from before_public.report import write_report
 from document_text import extract
+from ocr_text import image_units,pdf_units
+from sensitive import detect,normalize,redact_report
 
-PATTERNS=[('Private key',re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----')),
-          ('GitHub credential',re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})\b')),
-          ('AWS access key candidate',re.compile(r'\b(?:AKIA|ASIA)[A-Z0-9]{16}\b'))]
+OCR_CHECKS=[]
 original=scanner.inspect_bytes
 def inspect(data,name,rules):
     suffix=Path(name).suffix.lower()
-    if suffix in {'.doc','.docx','.pdf'}:
-        units,reasons=extract(data,suffix);findings=[]
+    def match(units,findings,custom=True):
         for text,location in units:
+            ocr=location.endswith('OCR')
             for number,line in enumerate(text.splitlines(),1):
-                for term in rules['terms']:
-                    if term['value'] in line or term['value'] in html.unescape(line):findings.append(dict(rule=term['label'],location=location,line=number))
-                for label,pattern in PATTERNS:
-                    if pattern.search(line):findings.append(dict(rule=label,location=location,line=number))
+                expanded=normalize(html.unescape(line),ocr)
+                if custom:
+                    for term in rules['terms']:
+                        value=term['value']
+                        if value in line or value in expanded or (ocr and re.sub(r'[ \t]','',value) in re.sub(r'[ \t]','',expanded)):findings.append(dict(rule=term['label'],location=location,line=number))
+                for label in detect(expanded,ocr):findings.append(dict(rule=label,location=location,line=number))
+    def record(checks):
+        OCR_CHECKS.extend(dict(item,path=scanner.redact(name,rules)) for item in checks)
+    if suffix in {'.doc','.docx','.pdf'}:
+        units,reasons=extract(data,suffix,with_ocr=True);findings=[]
+        if suffix=='.pdf':
+            found,notes,checks=pdf_units(data);units.extend(found);reasons.extend(notes);record(checks)
+        match(units,findings)
         kind='skipped' if reasons else 'text'
     else:
         findings,reasons,kind=original(data,name,rules)
         if kind=='text':
             text=data.decode('utf-16' if data.startswith((b'\xff\xfe',b'\xfe\xff')) else 'utf-8-sig')
-            for number,line in enumerate(text.splitlines(),1):
-                for label,pattern in PATTERNS:
-                    if pattern.search(line):findings.append(dict(rule=label,location='text',line=number))
+            match([(text,'text')],findings,custom=False)
+        elif kind=='image':
+            found,notes,checks=image_units(data);reasons.extend(notes);record(checks);match(found,findings)
+    for label in detect(name):findings.append(dict(rule=label,location='path',line=None))
     if Path(name).name in {'.env','id_rsa','id_ed25519'}:findings.append(dict(rule='Potential credential file',location='path',line=None))
     return findings,reasons,kind
 scanner.inspect_bytes=inspect
@@ -54,10 +64,13 @@ def main(argv=None):
         if output.is_relative_to(root) or root.is_relative_to(output):print('Reports must be outside the repository.');return 2
         before=fingerprint(root);status=0;summaries=[]
         for mode in (['staged','history'] if args.mode=='both' else [args.mode]):
+            OCR_CHECKS.clear()
             report=scanner.scan(root,rules,mode)
             if not rules['terms']:report['skipped'].append(dict(path='[rules]',reason='No personal terms configured; names and other personal strings were not checked.',commit=None))
             report['snapshot_fingerprint']=before
-            report['document_scope']='Extractable Word/PDF text only; no OCR, embedded-image GPS, macros, all hidden objects, DOC properties or deleted DOC revisions.'
+            report['ocr_checks']=list(OCR_CHECKS)
+            report['document_scope']='中英文图片 OCR 与 PDF 前 20 页整页 OCR；自动检测姓名字段、身份证格式、中国大陆手机号、常见 API key / PAT 候选。未配置姓名不做通用实体识别；OCR 置信度不等于准确率，仍可能漏字。Word 内图片、宏、所有隐藏对象、DOC 属性和已删除修订不在范围内。'
+            report=redact_report(report)
             write_report(report,output/mode)
             code=2 if report['skipped'] else 1 if report['findings'] else 0;status=max(status,code)
             summaries.append(dict(mode=mode,findings=len(report['findings']),incomplete=len(report['skipped']),counts=report['counts']))

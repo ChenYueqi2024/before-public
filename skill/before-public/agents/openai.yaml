@@ -1,4 +1,4 @@
 interface:
   display_name: "公开之前"
-  short_description: "在 push 前本地检查敏感词、凭据、文档、图片 GPS 与 Git 历史"
+  short_description: "在 push 前本地检查敏感词、凭据、文档 OCR、图片 GPS 与 Git 历史"
   default_prompt: "使用 $before-public 检查当前仓库的暂存快照和本地 Git 历史，告诉我隐私命中与未完整检查项，先不要 push。"
